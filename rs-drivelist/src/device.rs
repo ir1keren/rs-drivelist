@@ -5,13 +5,15 @@ use json::{JsonValue,object};
 pub struct MountPoint
 {
     pub path:String,
-    pub label:Option<String>
+    pub label:Option<String>,
+    pub totalBytes:Option<u64>,
+    pub availableBytes:Option<u64>
 }
 
 impl MountPoint
 {
     pub fn new(path:impl ToString)->Self {
-        Self { path: path.to_string(), label: None }
+        Self { path: path.to_string(), label: None, totalBytes:None, availableBytes:None }
     }
 }
 
@@ -20,7 +22,9 @@ impl Into<JsonValue> for &MountPoint
     fn into(self) -> JsonValue {
         object! {
             "path":self.path.clone(),
-            "label":self.label.clone()
+            "label":self.label.clone(),
+            "totalBytes":self.totalBytes.clone(),
+            "availableBytes":self.availableBytes.clone()
         }
     }
 }
@@ -106,6 +110,7 @@ impl Into<JsonValue> for &DeviceDescriptor
             "isSystem":self.isSystem.clone(),
             "isCard":self.isCard.clone(),
             "isSCSI":self.isSCSI.clone(),
+            "isUSB":self.isUSB.clone(),
             "isVirtual":self.isVirtual.clone(),
             "isRemovable":self.isRemovable.clone(),
             "isUAS":self.isUAS.clone()

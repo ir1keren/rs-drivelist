@@ -1,3 +1,5 @@
+#[allow(non_snake_case)]
+#[allow(non_snake_case)]
 pub mod device;
 #[cfg(target_os = "windows")]
 pub(crate)mod windows;
@@ -7,7 +9,7 @@ pub(crate)mod linux;
 use device::DeviceDescriptor;
 
 #[cfg(target_os = "windows")]
-pub fn drive_list()->Vec<DeviceDescriptor>
+pub fn drive_list()->anyhow::Result<Vec<DeviceDescriptor>>
 {
     use windows::*;
     use std::{ptr::null_mut, mem::{zeroed,size_of}};
@@ -55,7 +57,7 @@ pub fn drive_list()->Vec<DeviceDescriptor>
         SetupDiDestroyDeviceInfoList(h_device_info);
     }
 
-    drives
+    Ok(drives)
 }
 
 #[cfg(target_os = "linux")]

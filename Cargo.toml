@@ -1,2 +1,7 @@
 [workspace]
 members = ["rs-drivelist", "sample"]
+default-members=["rs-drivelist"]
+resolver = "2"
+
+[patch.crates-io]
+rs-drivelist={path="rs-drivelist"}

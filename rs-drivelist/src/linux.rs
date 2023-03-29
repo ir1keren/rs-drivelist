@@ -99,7 +99,7 @@ pub(crate)fn lsblk() -> anyhow::Result<Vec<DeviceDescriptor>>
     }).map(|js| {
         let mut device=DeviceDescriptor{
             enumerator:"lsblk:json".to_string(),
-            busType:Some(js["tran"].as_str().unwrap_or("UNKNOWN").to_string()),
+            busType:Some(js["tran"].as_str().unwrap_or("UNKNOWN").to_uppercase()),
             device:js["name"].as_str().unwrap_or("NO_NAME").to_string(),
             raw:js["kname"].as_str().unwrap_or(js["name"].as_str().unwrap_or("NO_NAME")).to_string(),
             isVirtual:re_block.is_match(js["subsystems"].as_str().unwrap_or("").to_lowercase().as_str()),

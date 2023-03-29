@@ -1,5 +1,5 @@
-use std::{ptr::{null_mut}, mem::{zeroed, size_of, MaybeUninit, align_of, transmute_copy}, str::from_utf8, ffi::{CString}};
-use winapi::{um::{setupapi::{HDEVINFO, PSP_DEVINFO_DATA, SetupDiGetDeviceRegistryPropertyW, SPDRP_FRIENDLYNAME, SPDRP_REMOVAL_POLICY, SPDRP_ENUMERATOR_NAME, SP_DEVICE_INTERFACE_DATA, SetupDiEnumDeviceInterfaces, SetupDiGetDeviceInterfaceDetailW, SP_DEVICE_INTERFACE_DETAIL_DATA_W}, winioctl::{GUID_DEVINTERFACE_DISK, VOLUME_DISK_EXTENTS, IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS, IOCTL_STORAGE_GET_DEVICE_NUMBER, STORAGE_DEVICE_NUMBER, DISK_GEOMETRY_EX, IOCTL_DISK_GET_DRIVE_GEOMETRY_EX, DRIVE_LAYOUT_INFORMATION_EX, PARTITION_INFORMATION_EX, IOCTL_DISK_GET_DRIVE_LAYOUT_EX, PARTITION_STYLE_MBR, PARTITION_STYLE_GPT, STORAGE_PROPERTY_QUERY, PropertyStandardQuery, StorageAdapterProperty, IOCTL_STORAGE_QUERY_PROPERTY, StorageAccessAlignmentProperty, IOCTL_DISK_IS_WRITABLE}, handleapi::{INVALID_HANDLE_VALUE, CloseHandle}, cfgmgr32::{CM_REMOVAL_POLICY_EXPECT_SURPRISE_REMOVAL, CM_REMOVAL_POLICY_EXPECT_ORDERLY_REMOVAL}, errhandlingapi::GetLastError, fileapi::{CreateFileW, OPEN_EXISTING, GetLogicalDrives, GetDriveTypeA, CreateFileA}, winnt::{FILE_SHARE_READ, FILE_ATTRIBUTE_NORMAL, BOOLEAN}, ioapiset::DeviceIoControl, winbase::{DRIVE_FIXED, DRIVE_REMOVABLE}, processenv::ExpandEnvironmentStringsA}, shared::{minwindef::{MAX_PATH, DWORD, WORD, BYTE}, winerror::{ERROR_NO_MORE_ITEMS, ERROR_INSUFFICIENT_BUFFER}}, ctypes::c_void};
+use std::{ptr::{null_mut}, mem::{zeroed, size_of, MaybeUninit, align_of, transmute_copy}, str::from_utf8, ffi::{CString, OsStr}, os::windows::prelude::OsStrExt};
+use winapi::{um::{setupapi::{HDEVINFO, PSP_DEVINFO_DATA, SetupDiGetDeviceRegistryPropertyW, SPDRP_FRIENDLYNAME, SPDRP_REMOVAL_POLICY, SPDRP_ENUMERATOR_NAME, SP_DEVICE_INTERFACE_DATA, SetupDiEnumDeviceInterfaces, SetupDiGetDeviceInterfaceDetailW, SP_DEVICE_INTERFACE_DETAIL_DATA_W}, winioctl::{GUID_DEVINTERFACE_DISK, VOLUME_DISK_EXTENTS, IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS, IOCTL_STORAGE_GET_DEVICE_NUMBER, STORAGE_DEVICE_NUMBER, DISK_GEOMETRY_EX, IOCTL_DISK_GET_DRIVE_GEOMETRY_EX, DRIVE_LAYOUT_INFORMATION_EX, PARTITION_INFORMATION_EX, IOCTL_DISK_GET_DRIVE_LAYOUT_EX, PARTITION_STYLE_MBR, PARTITION_STYLE_GPT, STORAGE_PROPERTY_QUERY, PropertyStandardQuery, StorageAdapterProperty, IOCTL_STORAGE_QUERY_PROPERTY, StorageAccessAlignmentProperty, IOCTL_DISK_IS_WRITABLE}, handleapi::{INVALID_HANDLE_VALUE, CloseHandle}, cfgmgr32::{CM_REMOVAL_POLICY_EXPECT_SURPRISE_REMOVAL, CM_REMOVAL_POLICY_EXPECT_ORDERLY_REMOVAL}, errhandlingapi::GetLastError, fileapi::{CreateFileW, OPEN_EXISTING, GetLogicalDrives, GetDriveTypeA, CreateFileA, GetVolumePathNameW, GetDiskFreeSpaceW}, winnt::{FILE_SHARE_READ, FILE_ATTRIBUTE_NORMAL, BOOLEAN}, ioapiset::DeviceIoControl, winbase::{DRIVE_FIXED, DRIVE_REMOVABLE}, processenv::ExpandEnvironmentStringsA}, shared::{minwindef::{MAX_PATH, DWORD, WORD, BYTE}, winerror::{ERROR_NO_MORE_ITEMS, ERROR_INSUFFICIENT_BUFFER}}, ctypes::c_void};
 use crate::device::*;
 
 pub(crate)fn ansi_to_string(unsafe_utf8:&[u8])->String
@@ -16,6 +16,7 @@ pub(crate)fn ansi_to_string(unsafe_utf8:&[u8])->String
 
 #[repr(C)]
 #[derive(Copy)]
+#[allow(non_snake_case)]
 struct STORAGE_ADAPTER_DESCRIPTOR
 {
     Version:DWORD,
@@ -161,7 +162,7 @@ pub(crate)fn is_system_device(device:&DeviceDescriptor)->bool
                 let val=ansi_to_string(&tmp_buffer);
 
                 for mp in device.mountpoints.iter() {
-                    if val.contains(mp) {
+                    if val.contains(&mp.path) {
                         return true;
                     }
                 }
@@ -172,6 +173,8 @@ pub(crate)fn is_system_device(device:&DeviceDescriptor)->bool
 }
 
 #[allow(non_snake_case)]
+#[allow(non_camel_case_types)]
+#[allow(dead_code)]
 struct STORAGE_ACCESS_ALIGNMENT_DESCRIPTOR {
     Version:DWORD,
     Size:DWORD,
@@ -306,10 +309,15 @@ pub(crate)fn get_detail_data(device:&mut DeviceDescriptor,h_dev_info:HDEVINFO,de
                     break;
                 }
                 
-                device.devicePath=Some(format!(r"\\.\PhysicalDrive{}",device_number));
-                get_mount_points(device_number, &mut device.mountpoints);
+                device.raw=format!(r"\\.\PhysicalDrive{}",device_number);
+                device.device=device.raw.clone();
+                
+                if let Err(err)=get_mount_points(device_number, &mut device.mountpoints) {
+                    device.error=Some(err.to_string());
+                    break;
+                }
 
-                let h_physical=CreateFileA(CString::new(device.devicePath.clone().unwrap()).unwrap().as_ptr(), 0, FILE_SHARE_READ, null_mut(), OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, null_mut());
+                let h_physical=CreateFileA(CString::new(device.device.clone()).unwrap().as_ptr(), 0, FILE_SHARE_READ, null_mut(), OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, null_mut());
 
                 if h_physical==INVALID_HANDLE_VALUE {
                     device.error=Some(format!("Cannot open: {}",device.devicePath.as_ref().unwrap()));
@@ -394,7 +402,7 @@ pub(crate)fn get_friendly_name(h_dev_info:HDEVINFO,device_info_data:PSP_DEVINFO_
     }
 }
 
-fn get_mount_points(device_number:i32,mount_points:&mut Vec<String>)
+fn get_mount_points(device_number:i32,mount_points:&mut Vec<MountPoint>)->anyhow::Result<()>
 {
     unsafe {
         let mut h_logical=INVALID_HANDLE_VALUE;
@@ -406,8 +414,8 @@ fn get_mount_points(device_number:i32,mount_points:&mut Vec<String>)
                 h_logical=INVALID_HANDLE_VALUE;
             }
 
-            let drive=MountPoint::new(format!(r"{}:\",volume_name));
-            let drive_type=GetDriveTypeA(CString::new(drive.clone()).unwrap().as_ptr());
+            let mut drive=MountPoint::new(format!(r"{}:\",volume_name));
+            let drive_type=GetDriveTypeA(CString::new(drive.path.clone()).unwrap().as_ptr());
 
             if drive_type!=DRIVE_FIXED && drive_type!=DRIVE_REMOVABLE {
                 continue;
@@ -427,6 +435,28 @@ fn get_mount_points(device_number:i32,mount_points:&mut Vec<String>)
             }
 
             if logical_volume_device_number==device_number {
+                let root_path = &mut [0_u16; 261];
+                let path_os:Vec<u16>=OsStr::new(&drive.path).encode_wide().chain(Some(0)).collect();
+
+                let mut ret=GetVolumePathNameW(path_os.as_ptr(), root_path.as_mut_ptr(), root_path.len() as _);
+
+                if ret==0 {
+                    return Err(anyhow::Error::new(std::io::Error::last_os_error()));
+                }
+
+                let mut sectors_per_cluster = 0;
+                let mut bytes_per_sector = 0;
+                let mut number_of_free_clusters = 0;
+                let mut total_number_of_clusters = 0;
+                ret = GetDiskFreeSpaceW(root_path.as_ptr(),&mut sectors_per_cluster,&mut bytes_per_sector,&mut number_of_free_clusters,&mut total_number_of_clusters);
+
+                if ret==0 {
+                    return Err(anyhow::Error::new(std::io::Error::last_os_error()));
+                }
+
+                let bytes_per_cluster = sectors_per_cluster as u64 * bytes_per_sector as u64;
+                drive.totalBytes=Some(bytes_per_cluster * total_number_of_clusters as u64);
+                drive.availableBytes=Some(bytes_per_cluster * number_of_free_clusters as u64);
                 mount_points.push(drive);
             }
         }
@@ -435,6 +465,8 @@ fn get_mount_points(device_number:i32,mount_points:&mut Vec<String>)
             CloseHandle(h_logical);
         }
     }
+
+    Ok(())
 }
 
 fn get_partition_table_type(device:&mut DeviceDescriptor,h_physical:*mut c_void)->bool
@@ -453,9 +485,9 @@ fn get_partition_table_type(device:&mut DeviceDescriptor,h_physical:*mut c_void)
         let disk_layout:DRIVE_LAYOUT_INFORMATION_EX=transmute_copy(&bytes);
 
         if disk_layout.PartitionStyle==PARTITION_STYLE_MBR && ((disk_layout.PartitionCount % 4)==0) {
-            device.partitionTableType="mbr".to_string();
+            device.partitionTableType=Some("mbr".to_string());
         } else if disk_layout.PartitionStyle==PARTITION_STYLE_GPT {
-            device.partitionTableType="gpt".to_string();
+            device.partitionTableType=Some("gpt".to_string());
         }
     }
 
