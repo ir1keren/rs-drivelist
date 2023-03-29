@@ -64,12 +64,28 @@ fn get_description(device:&JsonValue)->String
 
 fn get_mount_points(children:Vec<JsonValue>)->Vec<MountPoint>
 {
-    children.iter().filter(|c| c["mountpoint"].as_str().is_some()).map(|c| c.into()).collect::<Vec<MountPoint>>()
+    children.iter().filter(|c| c["mountpoint"].as_str().is_some()).map(|c| {
+        let mut val:MountPoint=c.into();
+        
+        if let Some(v)=c["fssize"].as_str() {
+            if let Ok(n)=v.parse::<u64>() {
+                val.totalBytes=Some(n);
+            }
+        }
+
+        if let Some(v)=c["fsavail"].as_str() {
+            if let Ok(n)=v.parse::<u64>() {
+                val.availableBytes=Some(n);
+            }
+        }
+
+        val
+    }).collect::<Vec<MountPoint>>()
 }
 
 pub(crate)fn lsblk() -> anyhow::Result<Vec<DeviceDescriptor>>
 {
-    let output=Command::new("lsblk").args(["--bytes","-all","--json","--paths","--output-all"]).output()?;
+    let output=Command::new("lsblk").args(["--bytes","--all","--json","--paths","--output-all"]).output()?;
     
     if let Some(code)=output.status.code() {
         if code != 0 {

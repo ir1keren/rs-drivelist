@@ -57,3 +57,54 @@ This library exports one function: rs_drivelist::drive_list() which returns a `R
           "isUAS": false
     }]
 
+## Linux Output
+
+    [{
+        "enumerator": "lsblk:json",
+        "busType": "NVME",
+        "busVersion": null,
+        "device": "/dev/nvme0n1",
+        "devicePath": "/dev/disk/by-path/pci-0000:02:00.0-nvme-1",
+        "raw": "/dev/nvme0n1",
+        "description": " SKHynix_HFM512GDHTNI-87A0B SYSTEM_DRV, Mazter, Home, WINRE_DRV",
+        "error": null,
+        "partitionTableType": "gpt",
+        "size": 512110190592,
+        "blockSize": 512,
+        "logicalBlockSize": 512,
+        "mountpoints": [
+          {
+            "path": "/boot/efi",
+            "label": "SYSTEM_DRV",
+            "totalBytes": 583942144,
+            "availableBytes": 541696000
+          },
+          {
+            "path": "[SWAP]",
+            "label": null,
+            "totalBytes": null,
+            "availableBytes": null
+          },
+          {
+            "path": "/",
+            "label": null,
+            "totalBytes": 67317620736,
+            "availableBytes": 47072321536
+          },
+          {
+            "path": "/home",
+            "label": "Home",
+            "totalBytes": 67050090496,
+            "availableBytes": 9986170880
+          }
+        ],
+        "isReadOnly": false,
+        "isSystem": true,
+        "isCard": false,
+        "isSCSI": false,
+        "isUSB": false,
+        "isVirtual": false,
+        "isRemovable": false,
+        "isUAS": null
+    }]
+

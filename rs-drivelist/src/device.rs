@@ -43,7 +43,8 @@ impl From<&JsonValue> for MountPoint
                 } else {
                     None
                 }
-            }
+            },
+            ..Default::default()
         }
     }
 }
