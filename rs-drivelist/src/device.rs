@@ -1,7 +1,7 @@
 use derivative::Derivative;
 use json::{JsonValue,object};
 
-#[derive(Debug,Default)]
+#[derive(Debug,Default,Clone)]
 pub struct MountPoint
 {
     pub path:String,
@@ -49,7 +49,7 @@ impl From<&JsonValue> for MountPoint
     }
 }
 
-#[derive(Debug,Derivative)]
+#[derive(Debug, Derivative, Clone)]
 #[derivative(Default)]
 #[allow(non_snake_case)]
 pub struct DeviceDescriptor {
