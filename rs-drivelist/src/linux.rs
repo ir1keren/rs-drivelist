@@ -50,13 +50,8 @@ fn get_description(device:&JsonValue)->String
     let mut description=vec![device["label"].as_str().unwrap_or("").to_string(),device["vendor"].as_str().unwrap_or("").to_string(),device["model"].as_str().unwrap_or("").to_string()];
     let label=device["label"].as_str().unwrap_or("");
 
-    let sub_labels=device["children"].members().filter(|c| if let Some(l)=c["label"].as_str(){
-        l != label
-    } else { false }).map(|c| c["label"].as_str().unwrap_or(c["mountpoint"].as_str().unwrap_or("")).to_string())
-    .collect::<Vec<String>>();
-
-    if sub_labels.len()>0 {
-        description.push(sub_labels.join(", ").to_string());
+    if !label.is_empty() {
+        description.push(label.to_string());
     }
 
     Regex::new(r"\s+").unwrap().replace_all(description.join(" ").as_str(), " ").to_string()
