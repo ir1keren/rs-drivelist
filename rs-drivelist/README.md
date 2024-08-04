@@ -110,3 +110,9 @@ This library exports one function: rs_drivelist::drive_list() which returns a `R
         "isUAS": null
     }]
 
+Already added support for 32 bit OSes.
+
+## Donation
+My main laptop I used to start this project is broken, and I'm using a Celeron N2840 with unupgradable soldered 2GB RAM.
+Your donation will be very much appreciated, as my bank account couldn't bought me a proper machine.
+Visit me on my [Ko-fi account](https://ko-fi.com/ir1keren)
