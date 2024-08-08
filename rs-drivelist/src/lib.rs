@@ -5,6 +5,8 @@ pub mod device;
 pub(crate)mod windows;
 #[cfg(target_os="linux")]
 pub(crate)mod linux;
+#[cfg(target_os = "macos")]
+pub(crate)mod macos;
 
 use device::DeviceDescriptor;
 
@@ -65,6 +67,11 @@ pub fn drive_list()->anyhow::Result<Vec<DeviceDescriptor>> {
     use linux::lsblk;
 
     lsblk()
+}
+
+#[cfg(target_os = "macos")]
+pub fn drive_list()->anyhow::Result<Vec<DeviceDescriptor>> {
+    macos::diskutil()
 }
 
 pub fn add(left: usize, right: usize) -> usize {
